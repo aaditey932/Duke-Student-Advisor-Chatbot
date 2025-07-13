@@ -99,98 +99,6 @@ The chatbot utilizes 9 specialized tools organized in a hierarchical approach:
 - **Session Management**: Chat history preservation and download
 - **Sidebar Controls**: Clear chat, session info, and available tools overview
 
-## Project Structure
-
-```
-duke-advisor-chatbot/
-├── app.py                          # Main Streamlit application
-├── agent_executor.py               # Custom agent execution logic
-├── requirements.txt                # Python dependencies
-├── tools/
-│   ├── finalTools.py              # Tool collection and coordination
-│   ├── memDatabaseTool.py         # MEM program search tool
-│   ├── prattDatabaseTool.py       # Pratt school search tool
-│   ├── curriculumTool.py          # Course information tools
-│   ├── eventsTool.py              # Events retrieval tool
-│   ├── professorsTool.py          # Professor ratings tool
-│   ├── aipiDatabaseTool.py        # AIPI program search tool
-│   └── webSearchTool.py           # Web search fallback tool
-├── utils/
-│   ├── pinecone_utils.py          # Vector database utilities
-│   └── openai_client.py           # OpenAI API integration
-└── data/                          # Data storage directory
-    ├── documents/                 # PDF documents for vectorization
-    ├── eventsData/                # Events categories and groups
-    ├── professorsData/            # Professor ratings data
-    └── curriculumData/            # Course and subject data
-```
-
-## Environment Setup
-
-### Required Environment Variables
-
-Create a `.env` file with the following variables:
-
-```bash
-# OpenAI API
-OPENAI_API_KEY=your_openai_api_key
-
-# Pinecone Vector Database
-PINECONE_API_KEY=your_pinecone_api_key
-PINECONE_API_KEY_AIPI=your_aipi_pinecone_key
-PINECONE_INDEX_AIPI=your_aipi_index_name
-
-# Duke University API
-DUKE_API_KEY=your_duke_api_key
-
-# Google Search API
-GOOGLE_API_KEY=your_google_api_key
-GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id
-GOOGLE_SERPER_API_KEY=your_serper_api_key
-```
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone <repository-url>
-cd duke-advisor-chatbot
-```
-
-2. **Install dependencies**
-```bash
-pip install -r requirements.txt
-```
-
-3. **Setup environment variables**
-```bash
-cp .env.example .env
-# Edit .env with your API keys
-```
-
-4. **Initialize vector databases** (if needed)
-```bash
-python tools/memDatabaseTool.py
-python tools/prattDatabaseTool.py
-```
-
-## Running the Application
-
-### Web Application
-```bash
-streamlit run app.py
-```
-
-### Jupyter Notebook Development
-```bash
-jupyter notebook duke-advisor-chatbot.ipynb
-```
-
-### Command Line Testing
-```bash
-python tools/finalTools.py
-```
-
 ## API Dependencies
 
 The chatbot integrates with several external services:
@@ -237,13 +145,6 @@ The project includes evaluation capabilities through:
 
 The application is deployed on AWS EC2 with Streamlit serving the web interface.
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/new-feature`)
-3. Commit your changes (`git commit -am 'Add new feature'`)
-4. Push to the branch (`git push origin feature/new-feature`)
-5. Create a Pull Request
 
 ## Limitations and Future Enhancements
 
