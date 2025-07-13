@@ -2,6 +2,12 @@
 
 An intelligent AI-powered agentic chatbot designed to assist students with comprehensive information about Duke University's programs, courses, professors, and events. The chatbot leverages multiple specialized tools, databases, and APIs to provide accurate, contextual responses to student queries.
 
+## Live Deployment
+
+🚀 **Access the live application**: [Duke Student Advisor Chatbot](http://13.222.34.153:8501)
+
+The application is deployed on AWS EC2 with Streamlit serving the web interface.
+
 ## Purpose
 
 The Duke Student Advisor Chatbot serves as a virtual assistant for students, providing instant access to information about:
@@ -138,12 +144,6 @@ The project includes evaluation capabilities through:
 - **Multi-criteria scoring**: Relevance, clarity, accuracy, completeness
 - **Tool usage tracking**: Monitors which tools are used for responses
 - **Response quality metrics**: Automated scoring of chatbot performance
-
-## Live Deployment
-
-🚀 **Access the live application**: [Duke Student Advisor Chatbot](http://13.222.34.153:8501)
-
-The application is deployed on AWS EC2 with Streamlit serving the web interface.
 
 
 ## Limitations and Future Enhancements
