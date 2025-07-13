@@ -4,6 +4,7 @@ from typing import Dict, List, Any
 from pinecone import Pinecone
 from openai import OpenAI
 from dotenv import load_dotenv
+from langchain_core.tools import tool
 
 load_dotenv()
 
@@ -127,24 +128,28 @@ class PineconeRetriever:
             "reconstructed_files": reconstructed_files
         }
 
+@tool
 def get_AIPI_details(query: str, api_key=None) -> Dict[str, Any]:
     """
-    Main function to be called by the LLM agent.
+    **PRIMARY TOOL** for Artificial Intelligence for Product Innovation (AIPI) program.
     
-    Args:
-        query (str): User query
-        
-    Returns:
-        Dict: Dictionary with reconstructed files
+    **Use this FIRST** for any AIPI-related queries before other tools.
+    
+    Comprehensive coverage:
+    - AIPI program overview, curriculum structure
+    - AIPI admissions requirements and process  
+    - AIPI faculty profiles and research areas
+    - AIPI courses, projects, and career outcomes
+    
+    **Use when:** Query mentions "AIPI", "Artificial Intelligence for Product Innovation", or AI master's program
+    **Also use get_courses("AIPI")** for detailed course listings
+    
+    Example: "Tell me about the AIPI program curriculum"
     """
     try:
         retriever = PineconeRetriever()
         result = retriever.query_and_reconstruct(query)
-        
-        print("\n=== Testing with ChatGPT ===")
-        chatgptSummary = test_with_chatgpt(query, result)
-
-        return chatgptSummary
+        return result
     except Exception as e:
         return {
             "error": str(e),

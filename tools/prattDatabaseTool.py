@@ -1,11 +1,25 @@
 from utils.pinecone_utils import initialize_pinecone_index, get_embeddings_model
-from utils.openai_client import get_openai_client, get_chat_completion
+from utils.openai_client import get_chat_completion
 from typing import List, Dict
 from utils.pinecone_utils import process_pdf
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage, SystemMessage
 
-def search(query: str) -> List[Dict]:
+@tool
+def pratt_search(query: str) -> List[Dict]:
     """
-    Search Pratt related content in the vector database
+    **GENERAL TOOL** for Pratt School of Engineering information (excluding MEM/AIPI specifics).
+    
+    Use for:
+    - Overview of ALL Pratt engineering programs (MEng, MS, PhD)
+    - General Pratt admissions, policies, facilities
+    - Cross-program information and comparisons
+    - Pratt-wide events, research centers, initiatives
+    
+    **Use when:** Query is about Pratt generally or non-MEM/AIPI engineering programs
+    **Don't use for:** MEM-specific details (use mem_search) or AIPI-specific details (use get_AIPI_details)
+    
+    Example: "What engineering master's programs does Pratt offer?"
     """
     top_k = 3
     namespace = "pratt-handbook"
@@ -30,16 +44,19 @@ def search(query: str) -> List[Dict]:
         include_metadata=True
     )
 
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that summarizes text."},
-        {"role": "user", "content": f"""Answer the following question based on the following text:
+    system_prompt = "You are a helpful assistant that summarizes text."
+    
+    user_prompt = f"""Answer the following question based on the following text:
 {results['matches']}
 
 Question: {query}
-"""}
-    ]
+"""
+    
+    messages = [SystemMessage(system_prompt),
+            HumanMessage(user_prompt)]
 
     response = get_chat_completion(messages)
+    
     if response is None:
         return "❌ Failed to get a valid response from OpenAI."
     answer = response.content

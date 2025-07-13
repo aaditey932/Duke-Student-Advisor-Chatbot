@@ -2,6 +2,7 @@ import requests
 import os
 from bs4 import BeautifulSoup
 from readability import Document
+from langchain_core.tools import tool
 
 def fetch_page_content(url):
     """Scrapes the given URL and extracts clean text content along with metadata."""
@@ -23,9 +24,23 @@ def fetch_page_content(url):
 
     except requests.exceptions.RequestException as e:
         return {"title" : "", "content": str(e), "restricted" : "YES", "url": url}
-    
+
+@tool
 def web_search(query):
-    """Fetches top search results for a given query."""
+    """
+    **FALLBACK TOOL**: Search the web for Duke information not covered by specialized tools.
+    
+    **Use as LAST RESORT when:**
+    - Specialized tools don't have sufficient information
+    - Query is about very recent developments or news
+    - Looking for student organizations, clubs, or activities
+    - Seeking information about policies not in databases
+    - Need current/real-time information
+    
+    **Don't use first**: Always try relevant specialized tools before web search
+    
+    Example: "What AI student clubs exist at Duke?" (after other tools don't provide this)
+    """
 
     num_results = 3
     API_KEY = os.getenv("GOOGLE_API_KEY")

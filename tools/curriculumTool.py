@@ -4,6 +4,7 @@ import os
 from urllib.parse import quote
 import json
 from difflib import SequenceMatcher
+from langchain_core.tools import tool
 
 load_dotenv()
 
@@ -67,8 +68,24 @@ def find_best_match(query, subjects):
         return best_match
     return None
 
+@tool
 def get_courses(subject):
-    """A tool to get all courses for a given subject"""
+    """
+    **COURSE LISTING TOOL**: Get all available courses for a specific subject/department.
+    
+    **Required for AIPI queries**: Always use this when asked about AIPI courses or curriculum.
+    
+    Common subjects: AIPI, ECE, ME, CEE, BME, CS, MATH, STA
+    
+    **Use when:** 
+    - "What courses are in [subject]?"
+    - "Show me AIPI curriculum"
+    - Exploring course options for a department
+    
+    **Use before get_course_details**: Get the list first, then get specific course details
+    
+    Example: get_courses("AIPI") for AIPI program courses
+    """
     
     # Load subjects and find the best match
     subjects = load_subjects()
@@ -105,7 +122,7 @@ def get_courses(subject):
 
 
 def get_course_details_helper(crse_id, crse_offer_nbr):
-    """A tool to get detailed course info for a specific course using its ID and offering number"""
+    """Get detailed information for a specific course at Duke University by subject and either course number or course title. Best used when a user mentions a specific course code or name."""
 
     url = f"{BASE_URL}/curriculum/courses/crse_id/{crse_id}/crse_offer_nbr/{crse_offer_nbr}?access_token={DUKE_API_KEY}"
     response = requests.get(url)
@@ -132,13 +149,21 @@ def get_course_details_helper(crse_id, crse_offer_nbr):
     except KeyError:
         return {"error": "Unexpected structure in course detail response."}
 
-
+@tool
 def get_course_details(subject, course_title=None, course_number=None, api_key = None):
     """
-    Search for course details by the subject it belongs to with the course title or course number.
-    Course can be AI, AIPI, or "Artificial Intelligence", "Eng Management" etc
-    Subject title can be "Sourcing Data", "Supply Chain Management" etc
-    Subject number can be 590, 710 etc
+    **SPECIFIC COURSE TOOL**: Get detailed information about ONE specific course.
+    
+    Parameters:
+    - subject: Department code (e.g., "ECE", "AIPI", "CS")
+    - course_identifier: Course number (e.g., "590") OR course title
+    
+    Returns: Description, instructor, prerequisites, schedule, credits
+    
+    **Use when:** User asks about a specific course by number or name
+    **Use after get_courses**: First get course list, then get specific details
+    
+    Example: get_course_details("ECE", "590") or get_course_details("AIPI", "Machine Learning")
     """
 
     course_list = get_courses(subject)

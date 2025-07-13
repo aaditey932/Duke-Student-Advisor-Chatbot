@@ -1,11 +1,27 @@
 from utils.pinecone_utils import process_pdf
-from utils.openai_client import get_openai_client, get_chat_completion
+from utils.openai_client import get_chat_completion
 from utils.pinecone_utils import initialize_pinecone_index, get_embeddings_model
 from typing import List, Dict
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage, SystemMessage
 
-def search(query: str) -> List[Dict]:
+@tool
+def mem_search(query: str) -> List[Dict]:
     """
-    Search MEM related content in the vector database
+    **PRIMARY TOOL** for Master of Engineering Management (MEM) program information.
+    
+    Use this FIRST for any MEM-related queries before trying other tools.
+    
+    Covers:
+    - MEM program structure, curriculum, specializations
+    - MEM admissions requirements and process
+    - MEM-specific faculty and courses
+    - MEM career outcomes and industry connections
+    
+    **Use when:** Query mentions "MEM", "Master of Engineering Management", or "engineering management"
+    **Don't use for:** General Pratt info, AIPI program, or non-MEM engineering programs
+    
+    Example: "What specializations does the MEM program offer?"
     """
     top_k = 3
     namespace = "mem-handbook"
@@ -31,21 +47,7 @@ def search(query: str) -> List[Dict]:
         include_metadata=True
     )
 
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that summarizes text."},
-        {"role": "user", "content": f"""Answer the following question based on the following text:
-{results['matches']}
-
-Question: {query}
-"""}
-    ]
-
-    response = get_chat_completion(messages)
-    if response is None:
-        return "Failed to get a valid response from OpenAI."
-    answer = response.content
-    
-    return answer
+    return results
 
 if __name__ == "__main__":
 
@@ -58,6 +60,6 @@ if __name__ == "__main__":
     # delete_all_records(namespace)
     
     # Example search
-    answer = search("What is the graduation requirements for MEM program?")
+    answer = mem_search("What is the graduation requirements for MEM program?")
     print(answer)
 

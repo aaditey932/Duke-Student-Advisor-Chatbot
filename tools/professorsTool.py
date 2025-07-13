@@ -1,5 +1,6 @@
 import json
 from difflib import SequenceMatcher
+from langchain_core.tools import tool
 
 def load_professors():
     """Load and parse the professors JSON file"""
@@ -47,20 +48,23 @@ def find_best_match(query, professors):
         return best_match
     return None
 
+@tool
 def rate_my_professor_info(professor_query):
     """
-    Get information about a professor based on name or department.
-    Returns professor rating information or an error message.
+    **PROFESSOR RATINGS TOOL**: Get student ratings and reviews from RateMyProfessors.
     
-    Example:
-    >>> rate_my_professor_info("Eric Fouh")
-    {
-        "name": "Eric Fouh",
-        "department": "Computer Science",
-        "rating": "1.3",
-        "would_take_again": "9%",
-        "num_ratings": "24"
-    }
+    **Use when:** User asks about:
+    - Professor ratings, reviews, or student opinions
+    - Teaching quality, difficulty, or student feedback
+    - "What do students think about [professor]?"
+    
+    **Don't use for:** 
+    - Basic professor info (use appropriate program tool first)
+    - Research interests or academic background
+    
+    **Important**: Get professor's full name from program tools first if needed
+    
+    Example: rate_my_professor_info("Brinnae Bent")
     """
     professors = load_professors()
     

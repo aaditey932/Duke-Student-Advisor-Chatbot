@@ -1,191 +1,158 @@
 import streamlit as st
-from utils.function_calling import get_response
-import os
-from dotenv import load_dotenv
-from utils.openai_client import get_openai_client
+from langchain.agents import create_openai_tools_agent, AgentExecutor
+from langchain_openai import ChatOpenAI
+from tools.finalTools import tools as available_tools
+from langchain import hub
+from langchain_core.messages import HumanMessage, AIMessage
+from datetime import datetime
+import json
 
-load_dotenv()
-try:
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-except:
-    openai_api_key = None
-
-# Duke University color palette
-DUKE_BLUE = "#00539B"  # Primary Duke Blue
-DUKE_NAVY = "#012169"  # Duke Navy Blue
-DUKE_WHITE = "#FFFFFF"
-DUKE_GRAY = "#666666"
-
-# Configure the page
+# Page config
 st.set_page_config(
-    page_title="Blue Devils in the Details",
-    page_icon="🔵",
+    page_title="Duke University Assistant",
+    page_icon="🏫",
     layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Apply Duke styling with CSS
-st.markdown(
-    f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&display=swap');
-
-    body, h1 {{
-        font-family: 'EB Garamond', serif !important;
-    }}
-
-    .main-title {{
-        font-size: 4rem;
-        font-weight: 100;
-        margin: 0;
-        text-align: center;
-        letter-spacing: 0.02em;
-    }}
-
-    .stTextInput > label, .stTextArea > label {{
-        color: {DUKE_WHITE};
-        font-weight: bold;
-    }}
-    .stButton > button {{
-        background-color: {DUKE_BLUE};
-        color: {DUKE_WHITE};
-        border-radius: 4px;
-        border: none;
-        padding: 0.5rem 1rem;
-    }}
-
-    .stSidebar {{
-        background-color: {DUKE_NAVY};
-        color: {DUKE_WHITE};
-    }}
-   
-    .css-1d391kg {{
-        background-color: {DUKE_NAVY};
-    }}
-    .sidebar .sidebar-content {{
-        background-color: {DUKE_NAVY};
-    }}
-    .title-container {{
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 2rem;
-        padding: 1rem;
-        border-radius: 4px;
-        color: {DUKE_NAVY};
-    }}
-
-    .input-container {{
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        padding: 1rem 2rem;
-        background-color: #ffffff;
-        z-index: 100;
-    }}
-
-    .stChatInputContainer {{
-        margin-bottom: 80px;
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-# Title and header
-st.markdown("""
-    <div class="title-container" style="margin-top: -50px ;">
-        <h1 class="main-title">Blue Devils in the Details</h1>
-    </div>
-    """, 
-    unsafe_allow_html=True
-)
-
-# Sidebar - Duke University logo and instructions
-with st.sidebar:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Duke_Athletics_logo.svg/1200px-Duke_Athletics_logo.svg.png", width=120)
+# Initialize the chatbot in session state
+@st.cache_resource
+def initialize_agent():
+    """Initialize the agent (cached to avoid recreating)."""
+    prompt = hub.pull("hwchase17/openai-functions-agent")
+    llm = ChatOpenAI(model='gpt-4o-mini', temperature=0.1)
     
-    st.markdown("### How to Use")
-    st.markdown("""Ask me anything about Duke University. I can help you with:
-
-- MEM (Master of Engineering Management) program information
-- Pratt School of Engineering programs
-- Course information and details
-                """)
+    agent = create_openai_tools_agent(
+        prompt=prompt, 
+        llm=llm, 
+        tools=available_tools
+    )
     
-    st_openai_api_key = st.text_input("OpenAI API Key", type="password", help="Enter your OpenAI API key")
+    agent_executor = AgentExecutor(
+        agent=agent, 
+        tools=available_tools, 
+        verbose=True, 
+        handle_parsing_errors=True, 
+        max_iterations=10,
+        return_intermediate_steps=True
+    )
+    
+    return agent_executor
 
-    # Clear chat button
-    if st.button("Clear Chat"):
+def main():
+    st.title("🏫 Duke University Assistant")
+    st.markdown("Ask me about Duke's programs, courses, professors, events, and more!")
+    
+    # Initialize session state
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    if "messages" not in st.session_state:
         st.session_state.messages = []
-        st.success("Chat history cleared!")
-
-system_prompt = """You are a helpful assistant for Duke University. You answer questions about Duke's programs, courses, professors, events, and related information using a set of tools. Be thorough, polite, and accurate. If something is unclear, ask follow-up questions to get more context.
-
-Guidelines:
-1. **If a user query is vague or underspecified**, do not assume. Instead, ask follow-up questions. For example, if someone asks "Who is Dr. Smith?" ask what program or department they're in before calling a professor-related tool.
-2. **Use tools only when needed**. Think through the query: Is it about a program, course, professor, or event? Then pick the tool that best fits that need. If a name match seems fuzzy or incorrect, avoid responding with false confidence.
-3. **Avoid inaccurate tool calls**: For example, if a professor's name does not have an exact match, don't return information about someone with a similar name. Instead, say "I couldn't find a match — could you clarify which program they're associated with?"
-4. **For professor-related questions**, try to get their department or program (e.g., AIPI or MEM since you have tools for both) before selecting a tool. Some professors are only listed in specific databases. 
-5. **Use the web search tool** as a fallback for Duke-related queries that don't fit neatly into any other tool (e.g., "What is Dr. X researching currently?" or "What does Duke's housing policy look like?") OR if the data you get back from the other tools is not helpful, instead of saying "I dont know" try to use the web search tool to answer the question. Incase web search doesn't work either, you can use your own knowledge to answer the question.
-6. You are **not** allowed to answer questions that are not related to Duke University. This is very important. If a user query is **not related to Duke University**, respond by saying it's out of scope and that you're here to help with Duke-related questions.
-7. Always follow safe and ethical practices when answering questions.
-8. Provide links, references, and citations when relevant.
-9. !!!!!!! When asked about the Artificial Intelligence for Product Innovation or AIPI course make sure to use the get_courses tool in your planning !!!!!!!!!
-10. Use "pratt_search" tool to get general information about Pratt School of Engineering and their programs please!.
-
-Be concise when appropriate, but offer long, elaborate answers when more detail would be helpful.
-"""
-
-# Initialize session state variables
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "system", "content": system_prompt}]
-
-
-if openai_api_key or st_openai_api_key:
-    st.session_state.api_key = openai_api_key or st_openai_api_key
-    st.session_state.client = get_openai_client(st.session_state.api_key)
-else:
-    st.session_state.api_key = None
-    st.session_state.client = None
-
-
-# Display chat messages from session state
-for message in st.session_state.messages:
-    if message["role"] == "user" or message["role"] == "assistant":
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-if st.session_state.client:
-    # User input
-    if user_input := st.chat_input("Enter your message here..."):
+    if "agent_executor" not in st.session_state:
+        st.session_state.agent_executor = initialize_agent()
+    
+    # Sidebar
+    with st.sidebar:
+        st.header("💬 Chat Controls")
         
-        st.session_state.messages.append({"role": "user", "content": user_input})
-
+        if st.button("🗑️ Clear Chat History"):
+            st.session_state.chat_history = []
+            st.session_state.messages = []
+            st.success("Chat history cleared!")
+        
+        st.header("📊 Session Info")
+        st.write(f"Messages: {len(st.session_state.messages)}")
+        st.write(f"History length: {len(st.session_state.chat_history)}")
+        
+        if st.button("💾 Download Chat"):
+            chat_data = {
+                'timestamp': datetime.now().isoformat(),
+                'messages': st.session_state.messages
+            }
+            st.download_button(
+                label="Download JSON",
+                data=json.dumps(chat_data, indent=2),
+                file_name=f"duke_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json"
+            )
+        
+        st.header("🛠️ Available Tools")
+        st.write("- Current Date & Time")
+        st.write("- MEM Program Info")
+        st.write("- Pratt School Info") 
+        st.write("- Course Listings")
+        st.write("- Course Details")
+        st.write("- Campus Events")
+        st.write("- AIPI Program Info")
+    
+    # Main chat interface
+    chat_container = st.container()
+    
+    # Display chat messages
+    with chat_container:
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+                
+                # Show tools used if available
+                if "tools_used" in message and message["tools_used"]:
+                    with st.expander("🔧 Tools used"):
+                        st.write(", ".join(message["tools_used"]))
+    
+    # Chat input
+    if prompt := st.chat_input("Ask me about Duke University..."):
+        # Add user message
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        
+        # Display user message
         with st.chat_message("user"):
-            st.markdown(f"**User**: {user_input}")
-
-        # Agent response handling
+            st.write(prompt)
+        
+        # Generate response
         with st.chat_message("assistant"):
-            status_container = st.empty()
-            response_container = st.empty()
-            
-            status_container.info("Initializing...")
-            
-            response = None
-            for status in get_response(st.session_state.messages):
-                if isinstance(status, str):
-                    status_container.info(status)
-                else:
-                    response = status
-                    break
-            
-            if response and response.content:
-                status_container.empty()
-                with response_container.container():
-                    st.markdown(response.content)
-                st.session_state.messages.append({"role": "assistant", "content": response.content})
+            with st.spinner("Thinking..."):
+                try:
+                    # Invoke the agent
+                    result = st.session_state.agent_executor.invoke({
+                        "input": prompt,
+                        "chat_history": st.session_state.chat_history
+                    })
+                    
+                    response = result.get('output', 'I apologize, but I encountered an issue.')
+                    intermediate_steps = result.get('intermediate_steps', [])
+                    tools_used = [step[0].tool for step in intermediate_steps if hasattr(step[0], 'tool')]
+                    
+                    # Display response
+                    st.write(response)
+                    
+                    # Show tools used
+                    if tools_used:
+                        with st.expander("🔧 Tools used in this response"):
+                            st.write(", ".join(tools_used))
+                    
+                    # Update session state
+                    st.session_state.messages.append({
+                        "role": "assistant", 
+                        "content": response,
+                        "tools_used": tools_used
+                    })
+                    
+                    # Update chat history for agent context
+                    st.session_state.chat_history.extend([
+                        HumanMessage(content=prompt),
+                        AIMessage(content=response)
+                    ])
+                    
+                    # Limit chat history
+                    if len(st.session_state.chat_history) > 20:
+                        st.session_state.chat_history = st.session_state.chat_history[-20:]
+                
+                except Exception as e:
+                    error_msg = f"I encountered an error: {str(e)}. Please try rephrasing your question."
+                    st.error(error_msg)
+                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
 
-else:
-    st.warning("Please enter your OpenAI API key here or add it to the .env file to continue.")
+if __name__ == "__main__":
+    main()
+
+# To run: streamlit run duke_chatbot_web.py
